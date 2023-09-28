@@ -1,104 +1,68 @@
 import streamlit as st
 
-import numpy as np
+import plotly.express as px
 
-from minicodingcompetition.log_helpers import *
+import pandas as pd
+
+from minicodingcompetition.parse_data import *
 
 st.write(
     """
-# Cougar Analysis
+# CS Compass
+
+Select Two University Programs to Compare
 """
 )
 
-log_file = st.file_uploader("Select a log file for analysis", type=["wpilog"])
+school_publications, school_cit_score, school_placements, name = parse_data()
 
-if log_file is not None:
-    # Convert the log file to a dataframe
-    log_as_bytes = log_file.getvalue()
-    log_as_dataframe = read_log_to_dataframe(log_as_bytes)
 
-    # Provide the option to download the file as a csv
-    with st.expander("Download as CSV"):
-        filename = st.text_input("Input the desired file name (no extension)")
+def createRadarPlot(data):
+    # Create a radar chart using Plotly Express
+    fig = px.line_polar(data, r='Value', theta='Category', line_close=True)
 
-        converted_csv = convert_df_to_csv(log_as_dataframe)
+    # Display the radar chart
+    st.plotly_chart(fig)
 
-        st.download_button(
-            label="Download converted file",
-            data=converted_csv,
-            file_name=f"{filename}.csv",
-            mime="text/csv",
-        )
+schools = name
 
-    # Allow the user to select one key at a time
-    all_keys = log_as_dataframe["Name"].unique()
-    selected_key = st.selectbox("Select a numerical key to analyze", all_keys)
+chosen_schools = st.multiselect(
+    'Select 2 universities',
+    schools,
+    [name[0], name[1]],
+    max_selections=2)
 
-    key_only_df = filter_dataframe(log_as_dataframe, selected_key)
-    ranged_df = key_only_df
+if len(chosen_schools) != 2:
+    st.write("Please select 2 universities.")
+else:
+    # Papers Published	Citation Score	Placements
+    data_categories = ["Publications", "Citation Score", "Placements"]
 
-    # Plot the selected key in the log
-    plot_dataframe(ranged_df)
+    scalars = [150, 100, 100]
 
-    st.subheader("Select a Range for Futher Analysis")
+    # show the radar for the first school
+    st.write("## " + chosen_schools[0] + ": Radar Chart")
+    values0 = [school_publications[chosen_schools[0]] / scalars[0],
+                school_cit_score[chosen_schools[0]] / scalars[1],
+                school_placements[chosen_schools[0]] / scalars[2]]
+    createRadarPlot({"Category": data_categories, "Value": values0})
 
-    timestamps = key_only_df["Timestamp"]
+    # show radar for second school
+    st.write("## " + chosen_schools[1] + ": Radar Chart")
+    values1 = [school_publications[chosen_schools[1]] / scalars[0],
+                school_cit_score[chosen_schools[1]] / scalars[1],
+                school_placements[chosen_schools[1]] / scalars[2]]
+    createRadarPlot({"Category": data_categories, "Value": values1})
 
-    range_start = st.select_slider(
-        "Range Start", options=timestamps, value=timestamps.min()
-    )
-    range_end = st.select_slider(
-        "Range End", options=timestamps, value=timestamps.max()
-    )
+    selected_school_publications = pd.Series({key: school_publications[key] for key in chosen_schools})
+    selected_school_cit_score =  pd.Series({key: school_cit_score[key] for key in chosen_schools})
+    selected_school_placements =  pd.Series({key: school_placements[key] for key in chosen_schools})
 
-    ranged_df = key_only_df.loc[
-        key_only_df["Timestamp"].between(
-            float(range_start), float(range_end), inclusive="both"
-        )
-    ]
+    st.write("### Number of Publications Per School")
+    st.bar_chart(selected_school_publications)
 
-    # Plot the selected range
-    plot_dataframe(ranged_df)
+    st.write("### Citation Score")
+    st.bar_chart(selected_school_cit_score)
 
-    # Calculate 5 number summary
-    [q1, med, q3] = np.percentile(ranged_df["Value"], [25, 50, 75])
-    minimum, maximum = ranged_df["Value"].min(), ranged_df["Value"].max()
-    mean = ranged_df["Value"].mean()
-
-    st.subheader("5 Number Summary")
-    st.write(f"Min: {minimum} | Q1: {q1} | Med: {med} | Q3: {q3} | Max: {maximum}")
-    st.write(f"Mean: {mean}")
-
-    # Calculate the 1st derivative
-    derivative_series = ranged_df["Value"].diff() / ranged_df["Timestamp"].diff()
-    derivative_series.name = "1st Derivative"
-
-    # Construct a derivative dataframe
-    derivative_df = pd.concat(
-        [
-            ranged_df["Timestamp"],
-            derivative_series,
-        ],
-        axis=1,
-    )
-
-    st.subheader("Graph of 1st Derivative")
-    st.line_chart(derivative_df, x="Timestamp", y="1st Derivative")
-
-    # Calculate the 2nd derivative
-    derivative2_series = (
-        derivative_df["1st Derivative"].diff() / derivative_df["Timestamp"].diff()
-    )
-    derivative2_series.name = "2nd Derivative"
-
-    # Construct a derivative dataframe
-    derivative2_df = pd.concat(
-        [
-            ranged_df["Timestamp"],
-            derivative2_series,
-        ],
-        axis=1,
-    )
-
-    st.subheader("Graph of 2nd Derivative")
-    st.line_chart(derivative2_df, x="Timestamp", y="2nd Derivative")
+    st.write("### PhD Student Placements")
+    st.bar_chart(selected_school_placements)
