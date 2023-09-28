@@ -1,4 +1,4 @@
-UniName,Papers Published,Citation Score,Placements
+name,numPublished,citScore,placement
 Massachusetts Institute of Technology,410,93.7,153
 Carnegie Mellon University,318,95.3,250
 University of California Berkeley,288,98.4,146
