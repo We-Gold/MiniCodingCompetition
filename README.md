@@ -14,5 +14,7 @@ More data points can be added in the future.
 
 ## Use
 
-Reach the website at ```<INSERT WEBSITE>```
+Reach the website at [CS-Compass](https://cscompass.streamlit.app/)
 
+Or, `git clone` the repository locally, use `poetry install` to install the package, and run 
+`poetry run streamlit run minicodingcompetition/main.py`.
